@@ -5,47 +5,50 @@
 {{ market_status_line }}
 {% endif %}
 
+{% if summary_only %}
 ## 📊 Quick Summary
-
+{% for e in enriched %}
+{{ e.signal_emoji }} **{{ e.stock_name }} ({{ e.result.code }})**: {{ e.localized_operation_advice }} | Score {{ e.result.sentiment_score }} | {{ e.localized_trend_prediction }}
+{% endfor %}
+{% else %}
 {% for e in enriched %}
 {% set result = e.result %}
 {% set dashboard = result.dashboard if result.dashboard else {} %}
 {% set core = dashboard.get('core_conclusion') or {} %}
 {% set battle = dashboard.get('battle_plan') or {} %}
 {% set data_persp = dashboard.get('data_perspective') or {} %}
-{% set sniper = battle.get('sniper_points', {}) %}
-{% set position = battle.get('position_strategy', {}) %}
-{% set trend_data = data_persp.get('trend_status', {}) %}
-{% set price_data = data_persp.get('price_position', {}) %}
+{% set sniper = battle.get('sniper_points', {}) if battle else {} %}
+{% set position = battle.get('position_strategy', {}) if battle else {} %}
+{% set trend_data = data_persp.get('trend_status', {}) if data_persp else {} %}
+{% set price_data = data_persp.get('price_position', {}) if data_persp else {} %}
 {% set phase = dashboard.get('phase_decision') or {} %}
 {% set intel = dashboard.get('intelligence') or {} %}
 
-### {{ e.signal_emoji }} {{ e.stock_name }} ({{ result.code }})
+## {{ e.signal_emoji }} {{ e.stock_name }} ({{ result.code }})
 
 **Action:** {{ e.localized_operation_advice }}  
 **Score:** {{ result.sentiment_score }}/100  
 **Trend:** {{ e.localized_trend_prediction }}  
 **Strength:** {{ trend_data.get('trend_score', 'N/A') }}/100  
 
-**Summary:** {{ (core.get('one_sentence', result.analysis_summary) or '')[:120] }}
+**Summary:** {{ (core.get('one_sentence', result.analysis_summary) or '')[:140] }}
 
 | Plan | Price |
 |---|---|
-| 🎯 Entry | {{ clean_sniper(sniper.get('ideal_buy')) if sniper else 'N/A' }} |
-| 🔵 Alt Entry | {{ clean_sniper(sniper.get('secondary_buy')) if sniper else 'N/A' }} |
-| 🛑 Stop Loss | {{ clean_sniper(sniper.get('stop_loss')) if sniper else 'N/A' }} |
-| 🎊 Take Profit | {{ clean_sniper(sniper.get('take_profit')) if sniper else 'N/A' }} |
+| 🎯 Entry | {{ sniper.get('ideal_buy', 'N/A') }} |
+| 🔵 Alt Entry | {{ sniper.get('secondary_buy', 'N/A') }} |
+| 🛑 Stop Loss | {{ sniper.get('stop_loss', 'N/A') }} |
+| 🎊 Take Profit | {{ sniper.get('take_profit', 'N/A') }} |
 
 **Position:** {{ position.get('suggested_position', 'N/A') if position else 'N/A' }}
 
 {% if price_data %}
-**Levels:** Current {{ price_data.get('current_price', 'N/A') }} | MA5 {{ price_data.get('ma5', 'N/A') }} | MA10 {{ price_data.get('ma10', 'N/A') }} | MA20 {{ price_data.get('ma20', 'N/A') }}  
-**Support / Resistance:** {{ price_data.get('support_level', 'N/A') }} / {{ price_data.get('resistance_level', 'N/A') }}
+**Levels:** Current {{ price_data.get('current_price', 'N/A') }} | MA5 {{ price_data.get('ma5', 'N/A') }} | MA10 {{ price_data.get('ma10', 'N/A') }} | MA20 {{ price_data.get('ma20', 'N/A') }}
 {% endif %}
 
 {% if position %}
-**Entry Plan:** {{ (position.get('entry_plan', 'N/A') or 'N/A')[:120] }}  
-**Risk Control:** {{ (position.get('risk_control', 'N/A') or 'N/A')[:120] }}
+**Entry Plan:** {{ (position.get('entry_plan', 'N/A') or 'N/A')[:140] }}  
+**Risk Control:** {{ (position.get('risk_control', 'N/A') or 'N/A')[:140] }}
 {% endif %}
 
 {% if phase.get('watch_conditions') %}
@@ -64,6 +67,7 @@
 
 ---
 {% endfor %}
+{% endif %}
 
 *Generated at: {{ report_timestamp }}*
 {% if show_llm_model and models_used %}
