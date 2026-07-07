@@ -1121,6 +1121,83 @@ class NotificationService(
         Returns:
             Markdown 格式的决策仪表盘日报
         """
+        # --- EARLY RETURN FOR SIMPLIFIED TRADE PLAN ---
+        if report_date is None:
+            report_date = datetime.now().strftime('%Y-%m-%d')
+        
+        report_language = self._get_report_language(results)
+        
+        sorted_results = sorted(results, key=lambda x: x.sentiment_score, reverse=True)
+        buy_count = sum(1 for r in results if getattr(r, 'decision_type', '') == 'buy')
+        sell_count = sum(1 for r in results if getattr(r, 'decision_type', '') == 'sell')
+        hold_count = sum(1 for r in results if getattr(r, 'decision_type', '') in ('hold', ''))
+        
+        lines = [
+            f"# 📈 {report_date} Trade Plan",
+            "",
+            f"> Analyzed: **{len(results)}** | Buy: {buy_count} | Watch: {hold_count} | Sell: {sell_count}",
+            "",
+            "## Quick Summary",
+        ]
+        
+        for r in sorted_results:
+            display_name = self._get_display_name(r, report_language)
+            lines.append(f"- **{display_name} ({r.code})**: {localize_operation_advice(r.operation_advice, report_language)} (Score: {r.sentiment_score})")
+        
+        lines.extend(["", "---", ""])
+        
+        for result in sorted_results:
+            dashboard = getattr(result, 'dashboard', {}) or {}
+            display_name = self._get_display_name(result, report_language)
+            lines.append(f"### {display_name} ({result.code})")
+            
+            trend = localize_trend_prediction(result.trend_prediction, report_language)
+            data_persp = dashboard.get('data_perspective', {}) if dashboard else {}
+            trend_data = data_persp.get('trend_status', {}) if data_persp else {}
+            strength = trend_data.get('trend_score', 'N/A')
+            
+            lines.append(f"- **Action**: {localize_operation_advice(result.operation_advice, report_language)}")
+            lines.append(f"- **Score**: {result.sentiment_score}")
+            lines.append(f"- **Trend**: {trend}")
+            if strength and strength != 'N/A':
+                lines.append(f"- **Strength**: {strength}")
+                
+            core = dashboard.get('core_conclusion', {}) if dashboard else {}
+            one_sentence = core.get('one_sentence', result.analysis_summary) if core else result.analysis_summary
+            if one_sentence:
+                lines.append(f"- **Summary**: {one_sentence}")
+                
+            battle = dashboard.get('battle_plan', {}) if dashboard else {}
+            sniper = battle.get('sniper_points', {}) if battle else {}
+            lines.append(f"- **Entry**: {self._clean_sniper_value(sniper.get('ideal_buy', 'N/A'))}")
+            lines.append(f"- **Alt Entry**: {self._clean_sniper_value(sniper.get('secondary_buy', 'N/A'))}")
+            lines.append(f"- **Stop Loss**: {self._clean_sniper_value(sniper.get('stop_loss', 'N/A'))}")
+            lines.append(f"- **Take Profit**: {self._clean_sniper_value(sniper.get('take_profit', 'N/A'))}")
+            
+            position = battle.get('position_strategy', {}) if battle else {}
+            lines.append(f"- **Position Size**: {position.get('suggested_position', 'N/A')}")
+            
+            if data_persp:
+                price_data = data_persp.get('price_position', {})
+                if price_data:
+                    current = price_data.get('current_price', 'N/A')
+                    ma5 = price_data.get('ma5', 'N/A')
+                    ma10 = price_data.get('ma10', 'N/A')
+                    ma20 = price_data.get('ma20', 'N/A')
+                    lines.append(f"- **Price/MAs**: Current: {current} / MA5: {ma5} / MA10: {ma10} / MA20: {ma20}")
+                    
+                    support = price_data.get('support_level', 'N/A')
+                    resist = price_data.get('resistance_level', 'N/A')
+                    lines.append(f"- **Support/Resistance**: Support: {support} / Resistance: {resist}")
+            
+            lines.append(f"- **Entry Plan**: {position.get('entry_plan', 'N/A')}")
+            lines.append(f"- **Risk Control**: {position.get('risk_control', 'N/A')}")
+            
+            lines.extend(["", "---", ""])
+            
+        return "\n".join(lines)
+        # --- END OF EARLY RETURN ---
+
         config = get_config()
         report_language = self._get_report_language(results)
         labels = get_report_labels(report_language)
