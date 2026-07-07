@@ -17,15 +17,17 @@
 {% set position = battle.get('position_strategy', {}) %}
 {% set trend_data = data_persp.get('trend_status', {}) %}
 {% set price_data = data_persp.get('price_position', {}) %}
+{% set phase = dashboard.get('phase_decision') or {} %}
+{% set intel = dashboard.get('intelligence') or {} %}
 
 ### {{ e.signal_emoji }} {{ e.stock_name }} ({{ result.code }})
 
 **Action:** {{ e.localized_operation_advice }}  
 **Score:** {{ result.sentiment_score }}/100  
 **Trend:** {{ e.localized_trend_prediction }}  
-**Trend Strength:** {{ trend_data.get('trend_score', 'N/A') }}/100  
+**Strength:** {{ trend_data.get('trend_score', 'N/A') }}/100  
 
-**Summary:** {{ core.get('one_sentence', result.analysis_summary) }}
+**Summary:** {{ (core.get('one_sentence', result.analysis_summary) or '')[:120] }}
 
 | Plan | Price |
 |---|---|
@@ -37,26 +39,24 @@
 **Position:** {{ position.get('suggested_position', 'N/A') if position else 'N/A' }}
 
 {% if price_data %}
-**Key Levels:** Current {{ price_data.get('current_price', 'N/A') }} | MA5 {{ price_data.get('ma5', 'N/A') }} | MA10 {{ price_data.get('ma10', 'N/A') }} | MA20 {{ price_data.get('ma20', 'N/A') }}  
+**Levels:** Current {{ price_data.get('current_price', 'N/A') }} | MA5 {{ price_data.get('ma5', 'N/A') }} | MA10 {{ price_data.get('ma10', 'N/A') }} | MA20 {{ price_data.get('ma20', 'N/A') }}  
 **Support / Resistance:** {{ price_data.get('support_level', 'N/A') }} / {{ price_data.get('resistance_level', 'N/A') }}
 {% endif %}
 
 {% if position %}
-**Entry Plan:** {{ position.get('entry_plan', 'N/A') }}  
-**Risk Control:** {{ position.get('risk_control', 'N/A') }}
+**Entry Plan:** {{ (position.get('entry_plan', 'N/A') or 'N/A')[:120] }}  
+**Risk Control:** {{ (position.get('risk_control', 'N/A') or 'N/A')[:120] }}
 {% endif %}
 
-{% set phase = dashboard.get('phase_decision') or {} %}
 {% if phase.get('watch_conditions') %}
-**Watch Conditions**
-{% for condition in phase.get('watch_conditions')[:3] %}
+**Watch**
+{% for condition in phase.get('watch_conditions')[:2] %}
 - {{ condition }}
 {% endfor %}
 {% endif %}
 
-{% set intel = dashboard.get('intelligence') or {} %}
 {% if intel.get('risk_alerts') %}
-**Main Risks**
+**Risks**
 {% for alert in intel.get('risk_alerts')[:2] %}
 - {{ alert }}
 {% endfor %}
